@@ -1,0 +1,37 @@
+# Build istio and push the containers to internal registry (registry.fi.intel.com)
+
+name: CI
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on push or pull request events but only for the branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: [self-hosted, bj]
+    environment:
+      name: CI
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+            # Build and Push
+      - name: Build and Push images
+        shell: bash
+        run: |
+          docker build --network=host . -t ${HUB}/${IMAGE_NAME}:${TAG}
+          docker push ${HUB}/${IMAGE_NAME}:${TAG}
+        env:
+          IMAGE_NAME: bpf_bypass_tcpip
+          TAG: latest
+          HUB: registry.fi.intel.com/staging

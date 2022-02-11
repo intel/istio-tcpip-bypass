@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: bypass-tcpip
+  namespace: kube-system
+  labels:
+    k8s-app: bypass-tcpip
+spec:
+  selector:
+    matchLabels:
+      name: bypass-tcpip
+  template:
+    metadata:
+      labels:
+        name: bypass-tcpip
+    spec:
+      tolerations:
+      # this toleration is to have the daemonset runnable on master nodes
+      # remove it if your masters can't run pods
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - name: bypass-tcpip
+        image: intel/istio-tcpip-bypass:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+            privileged: true
+        volumeMounts:
+        - name: sysfs
+          mountPath: /sys/fs
+        env:
+        - name: BPF_BYPASS_TCPIP
+          value: "enabled"
+      volumes:
+      - name: sysfs
+        hostPath:
+          path: /sys/fs
