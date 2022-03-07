@@ -1,4 +1,4 @@
-module github.com/intel-innersource/applications.services.cloud.istio.tcpip-bypass
+module github.com/intel/istio-tcpip-bypass
 
 go 1.17
 
