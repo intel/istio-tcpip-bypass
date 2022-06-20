@@ -9,23 +9,26 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
+
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	v2 "github.com/containers/common/pkg/cgroupv2"
 	"golang.org/x/sys/unix"
-	"os"
-	"os/signal"
-	"path/filepath"
 )
 
 const (
-	MapsPinpath = "/sys/fs/bpf/tcpip-bypass"
+	FilesystemTypeBPFFS = unix.BPF_FS_MAGIC
+	MapsRoot            = "/sys/fs/bpf"
+	MapsPinpath         = "/sys/fs/bpf/tcpip-bypass"
 )
 
 type BypassProgram struct {
-	sockops_Obj    bpf_sockopsObjects
-	redir_Obj   bpf_redirObjects
-	SockopsCgroup  link.Link
+	sockops_Obj   bpf_sockopsObjects
+	redir_Obj     bpf_redirObjects
+	SockopsCgroup link.Link
 }
 
 func setLimit() error {
@@ -59,7 +62,7 @@ func loadProgram(prog BypassProgram) (BypassProgram, error) {
 	var options ebpf.CollectionOptions
 
 	err = os.Mkdir(MapsPinpath, os.ModePerm)
-	if err != nil{
+	if err != nil {
 		fmt.Println(err)
 	}
 
@@ -139,16 +142,50 @@ func closeProgram(prog BypassProgram) {
 
 }
 
+func checkOrMountBPFFSDefault() error {
+	var err error
+
+	_, err = os.Stat(MapsRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(MapsRoot, 0755); err != nil {
+				return fmt.Errorf("unable to create bpf mount directory: %s", err)
+			}
+		}
+	}
+
+	fst := unix.Statfs_t{}
+	err = unix.Statfs(MapsRoot, &fst)
+	if err != nil {
+		return &os.PathError{Op: "statfs", Path: MapsRoot, Err: err}
+	} else if fst.Type == FilesystemTypeBPFFS {
+		return nil
+	}
+
+	err = unix.Mount(MapsRoot, MapsRoot, "bpf", 0, "")
+	if err != nil {
+		return fmt.Errorf("failed to mount %s: %s", MapsRoot, err)
+	}
+
+	return nil
+}
+
 func main() {
 	var prog BypassProgram
 	var err error
+
+	err = checkOrMountBPFFSDefault()
+	if err != nil {
+		fmt.Println("BPF filesystem mounting on /sys/fs/bpf failed:", err)
+		return
+	}
 
 	if err := setLimit(); err != nil {
 		fmt.Println("Setting limit failed:", err)
 		return
 	}
 
-	prog,err = loadProgram(prog)
+	prog, err = loadProgram(prog)
 	if err != nil {
 		fmt.Println("Loading program failed:", err)
 		return

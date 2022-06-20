@@ -28,9 +28,7 @@ spec:
         volumeMounts:
         - name: sysfs
           mountPath: /sys/fs
-        env:
-        - name: BPF_BYPASS_TCPIP
-          value: "enabled"
+          mountPropagation: Bidirectional
       volumes:
       - name: sysfs
         hostPath:
