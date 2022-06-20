@@ -30,7 +30,7 @@ Build Docker Image and Load eBPF Program
 
 #. Load eBPF program via docker command::
 
-    $ docker run  -v /sys/fs:/sys/fs --net=host --privileged --name tcpip-bypass bpf_bypass_tcpip
+    $ docker run --mount type=bind,source=/sys/fs,target=/sys/fs,bind-propagation=rshared --net=host --privileged --name tcpip-bypass bpf_bypass_tcpip
 
 #. Load eBPF program via setting up a deamonset::
 
