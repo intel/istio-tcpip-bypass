@@ -42,10 +42,10 @@ Build Docker Image and Load eBPF Program
 Debug Log
 ~~~~~~~~~
 
-# Enable debug log via modifying the debug MAP::
+#. Enable debug log via modifying the debug MAP::
 
     $ sudo bpftool map update name debug_map key hex 0 0 0 0  value hex 1 0 0 0
 
-# Read log from kernel tracepipe
+#. Read log from kernel tracepipe
 
     $ sudo cat /sys/kernel/debug/tracing/trace_pipe
