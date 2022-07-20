@@ -30,10 +30,22 @@ Build Docker Image and Load eBPF Program
 
 #. Load eBPF program via docker command::
 
-    $ docker run --mount type=bind,source=/sys/fs,target=/sys/fs,bind-propagation=rshared --net=host --privileged --name tcpip-bypass  ${IMAGE_NAME}
+    $ docker run --mount type=bind,source=/sys/fs,target=/sys/fs,bind-propagation=rshared --privileged --name tcpip-bypass  ${IMAGE_NAME}
 
 #. Load eBPF program via setting up a deamonset::
 
     $ kubectl apply -f bypass-tcpip-daemonset.yaml
 
 #. Unload eBPF program via destroying Docker container or deamonset
+
+
+Debug Log
+~~~~~~~~~
+
+# Enable debug log via modifying the debug MAP::
+
+    $ sudo bpftool map update name debug_map key hex 0 0 0 0  value hex 1 0 0 0
+
+# Read log from kernel tracepipe
+
+    $ sudo cat /sys/kernel/debug/tracing/trace_pipe
