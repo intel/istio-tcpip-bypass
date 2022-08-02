@@ -29,12 +29,12 @@ int bpf_redir_proxy(struct sk_msg_md *msg)
         }
         rc = bpf_msg_redirect_hash(msg, &map_redir, key_redir, BPF_F_INGRESS);
     }
-    if (rc == SK_PASS) {
-        debug_val_ptr = bpf_map_lookup_elem(&debug_map, &debug_on_index);
-        if (debug_val_ptr && *debug_val_ptr == 1) {
+
+    debug_val_ptr = bpf_map_lookup_elem(&debug_map, &debug_on_index);
+    if (debug_val_ptr && *debug_val_ptr == 1) {
+        if (rc == SK_PASS) {
             char info_fmt[] = "data redirection succeed: [%x]->[%x]\n";
             bpf_trace_printk(info_fmt, sizeof(info_fmt), proxy_key.local.ip4, proxy_key.remote.ip4);
-
             debug_val_ptr = bpf_map_lookup_elem(&debug_map, &debug_pckts_index);
             if (debug_val_ptr == NULL) {
                 debug_val = 0;
@@ -42,10 +42,13 @@ int bpf_redir_proxy(struct sk_msg_md *msg)
             }
             __sync_fetch_and_add(debug_val_ptr, 1);
             bpf_map_update_elem(&debug_map, &debug_pckts_index, debug_val_ptr, BPF_ANY);
-
+        } else {
+            char info_fmt[] = "data redirection failed: [%x]->[%x]\n";
+            bpf_trace_printk(info_fmt, sizeof(info_fmt), proxy_key.local.ip4, proxy_key.remote.ip4);
         }
     }
-    return SK_PASS;
+
+    return rc;
 }
 
 char _license[] SEC("license") = "GPL";
