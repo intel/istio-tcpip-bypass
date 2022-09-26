@@ -6,9 +6,9 @@ name: CI
 on:
   # Triggers the workflow on push or pull request events but only for the branch
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -18,20 +18,32 @@ jobs:
   # This workflow contains a single job called "build"
   build:
     # The type of runner that the job will run on
-    runs-on: [self-hosted, bj]
-    environment:
-      name: CI
+    runs-on: ubuntu-latest
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-            # Build and Push
-      - name: Build and Push images
+      - name: Build image
         shell: bash
         run: |
           docker build --network=host . -t ${HUB}/${IMAGE_NAME}:${TAG}
+        env:
+          IMAGE_NAME: istio_tcpip_bypass
+          TAG: latest
+          HUB: ghcr.io/${{ github.repository }}
+      - name: Login to the container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io/${{ github.repository }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push image
+        if: ${{ github.event_name != 'pull_request' }}
+        shell: bash
+        run: |
           docker push ${HUB}/${IMAGE_NAME}:${TAG}
         env:
-          IMAGE_NAME: bpf_bypass_tcpip
+          IMAGE_NAME: istio_tcpip_bypass
           TAG: latest
-          HUB: registry.fi.intel.com/staging
+          HUB: ghcr.io/${{ github.repository }}
+
