@@ -8,15 +8,15 @@ package main
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -target bpf -cflags "-D__TARGET_ARCH_x86" bpf_sockops bpf/bpf_sockops.c
 
 import (
+	"errors"
 	"fmt"
-	"os"
-	"os/signal"
-	"path/filepath"
-
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	v2 "github.com/containers/common/pkg/cgroupv2"
 	"golang.org/x/sys/unix"
+	"os"
+	"os/signal"
+	"path/filepath"
 )
 
 const (
@@ -53,6 +53,9 @@ func getCgroupPath() (string, error) {
 	enabled, err := v2.Enabled()
 	if !enabled {
 		cgroupPath = filepath.Join(cgroupPath, "unified")
+		if _, err = os.Stat(cgroupPath); errors.Is(err, os.ErrNotExist) {
+			fmt.Println("tcpip-bypass needs CgroupV2 support on host!")
+		}
 	}
 	return cgroupPath, err
 }
@@ -60,6 +63,7 @@ func getCgroupPath() (string, error) {
 func loadProgram(prog BypassProgram) (BypassProgram, error) {
 	var err error
 	var options ebpf.CollectionOptions
+	var cgroupPath string
 
 	err = os.Mkdir(MapsPinpath, os.ModePerm)
 	if err != nil {
@@ -84,7 +88,7 @@ func loadProgram(prog BypassProgram) (BypassProgram, error) {
 		fmt.Println("Error load objects:", err)
 	}
 
-	if cgroupPath, err := getCgroupPath(); err == nil {
+	if cgroupPath, err = getCgroupPath(); err == nil {
 		prog.SockopsCgroup, err = link.AttachCgroup(link.CgroupOptions{
 			Path:    cgroupPath,
 			Attach:  ebpf.AttachCGroupSockOps,
